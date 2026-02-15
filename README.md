@@ -35,13 +35,14 @@
 Our development path is divided into four key phases to ensure a stable, production-ready release.
 
 ### Phase 1: Foundation & UI/UX 🏗️
+- [x] Create UI/design with Figma or Google Stitch for each individual page.
+- [x] Gemini API performance testing and prompt engineering.
 - [x] Create Flutter Project structure and environment setup.
-- [x] Design and implement a modern, responsive UI with **Safe Area** support.
-- [x] Build specialty selection screens (Neurology, Cardiology, etc.).
-- [x] Implement the chat interface with auto-scrolling and keyboard handling.
+- [ ] Design and implement a modern, responsive UI with **Safe Area** support.
+- [ ] Build specialty selection screens (Neurology, Cardiology, etc.).
+- [ ] Implement the chat interface with auto-scrolling and keyboard handling.
 
 ### Phase 2: AI Integration & Logic 🧠
-- [x] Gemini API performance testing and prompt engineering.
 - [ ] Secure API key integration using environment variables.
 - [ ] Implement AI "Thinking" states and markdown message rendering.
 - [ ] Build the offline User Profile system with local data persistence.

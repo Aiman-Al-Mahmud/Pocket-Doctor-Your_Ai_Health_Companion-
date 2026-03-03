@@ -44,9 +44,9 @@ Our development path is divided into four key phases to ensure a stable, product
 - [x] Login & registration system created for authentication
 
 ### Phase 2: AI Integration & Logic 🧠
-- [ ] Secure API key integration using environment variables.
-- [ ] Implement AI "Thinking" states and markdown message rendering.
-- [ ] Build the offline User Profile system with local data persistence.
+- [x] Secure API key integration using environment variables.
+- [x] Implement AI "Thinking" states and markdown message rendering.
+- [x] Build the offline User Profile system with local data persistence.
 
 ### Phase 3: AI Integration & Logic
 - [ ] Create database to store chat history .

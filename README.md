@@ -48,12 +48,12 @@ Our development path is divided into four key phases to ensure a stable, product
 - [x] Implement AI "Thinking" states and markdown message rendering.
 - [x] Build the offline User Profile system with local data persistence.
 
-### Phase 3: AI Integration & Logic
-- [ ] Create database to store chat history .
+### Phase 3: Database Integration 
+- [x] Create database to store chat history .
 
 ### Phase 4: Safety & Connectivity 🚨
-- [ ] Integrate Telephony services for direct ambulance calling.
-- [ ] Create the Emergency Alert trigger system.
+- [x] Integrate Telephony services for direct ambulance calling.
+- [x] Create the Emergency Alert trigger system.
 - [ ] Implement Location Services to provide coordinates during emergencies.
 
 ### Phase 5: Optimization & Deployment 🚀

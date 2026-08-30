@@ -4,15 +4,15 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'api_key_service.dart';
 
 class GeminiAIService {
   // All config is loaded from .env at runtime via flutter_dotenv.
   // .env must be loaded in main.dart before any API calls.
-  static String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
   static String get _baseUrl =>
       dotenv.env['GEMINI_BASE_URL'] ??
       'https://generativelanguage.googleapis.com/v1beta';
-  static String get _model => dotenv.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash';
+  static String get _model => dotenv.env['GEMINI_MODEL'] ?? 'gemini-1.5-flash';
   static int get _timeoutSeconds =>
       int.tryParse(dotenv.env['GEMINI_TIMEOUT_SECONDS'] ?? '') ?? 60;
 
@@ -115,17 +115,15 @@ Keep responses clear, user-friendly, and compassionate.''';
     'sweating', 'dizzy', 'nausea',  // Common with emergencies
   ];
 
-  /// Send a message to Gemini API directly and get a response
+  /// Send a message to Gemini API directly and get a response with multi-model fallback
   static Future<AIResponse> sendMessage({
     required String message,
     required String specialty,
     String? userId,
   }) async {
     try {
-      // Check for emergency keywords in user message
       final isEmergency = _detectEmergency(message);
       
-      // Build the prompt with specialty context
       final specialtyContext = _specialtyContexts[specialty] ?? _specialtyContexts['General']!;
       final fullPrompt = '''$specialtyContext
 
@@ -133,70 +131,52 @@ User's health concern: $message
 
 Please provide helpful guidance following your instructions.''';
 
-      if (_apiKey.isEmpty) {
+      final apiKey = await ApiKeyService.getEffectiveApiKey();
+      final isCustom = await ApiKeyService.isUsingCustomKey();
+
+      if (apiKey.isEmpty) {
         throw const AIException(
-          'No API key configured. Please set GEMINI_API_KEY in the .env file.',
+          'No API key configured. Please set GEMINI_API_KEY in the .env file or add a custom key in Profile > Account Settings.',
           code: 'NO_API_KEY',
         );
       }
-      final url = Uri.parse('$_baseUrl/models/$_model:generateContent?key=$_apiKey');
-      
-      debugPrint('🚀 Calling Gemini API...');
-      debugPrint('📍 URL: $url');
-      debugPrint('📝 Specialty: $specialty');
-      
-      // Call Gemini API directly
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': fullPrompt}
-              ]
-            }
-          ],
-          'systemInstruction': {
+
+      final payload = {
+        'contents': [
+          {
             'parts': [
-              {'text': _systemInstruction}
+              {'text': fullPrompt}
             ]
-          },
-          'generationConfig': {
-            'temperature': 0.7,
-            'topK': 40,
-            'topP': 0.95,
-            'maxOutputTokens': 2048,
-          },
-          'safetySettings': [
-            {
-              'category': 'HARM_CATEGORY_HARASSMENT',
-              'threshold': 'BLOCK_ONLY_HIGH'
-            },
-            {
-              'category': 'HARM_CATEGORY_HATE_SPEECH',
-              'threshold': 'BLOCK_ONLY_HIGH'
-            },
-            {
-              'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-              'threshold': 'BLOCK_ONLY_HIGH'
-            },
-            {
-              'category': 'HARM_CATEGORY_DANGEROUS_CONTENT',
-              'threshold': 'BLOCK_ONLY_HIGH'
-            },
-          ],
-        }),
-      ).timeout(Duration(seconds: _timeoutSeconds));
+          }
+        ],
+        'systemInstruction': {
+          'parts': [
+            {'text': _systemInstruction}
+          ]
+        },
+        'generationConfig': {
+          'temperature': 0.7,
+          'topK': 40,
+          'topP': 0.95,
+          'maxOutputTokens': 2048,
+        },
+        'safetySettings': [
+          {'category': 'HARM_CATEGORY_HARASSMENT', 'threshold': 'BLOCK_ONLY_HIGH'},
+          {'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_ONLY_HIGH'},
+          {'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold': 'BLOCK_ONLY_HIGH'},
+          {'category': 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold': 'BLOCK_ONLY_HIGH'},
+        ],
+      };
+
+      debugPrint('🚀 Calling Gemini API (${isCustom ? "Custom User Key" : ".env System Key"})...');
+      
+      final response = await _postWithModelFallback(apiKey: apiKey, body: payload);
 
       debugPrint('📡 Response Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Extract the text from Gemini response
         String aiMessage = '';
         if (data['candidates'] != null && data['candidates'].isNotEmpty) {
           final candidate = data['candidates'][0];
@@ -214,10 +194,8 @@ Please provide helpful guidance following your instructions.''';
           debugPrint('✅ Got AI response: ${aiMessage.substring(0, aiMessage.length > 100 ? 100 : aiMessage.length)}...');
         }
 
-        // Enhanced emergency detection - check both user message AND AI response
         bool finalIsEmergency = isEmergency;
         if (!finalIsEmergency) {
-          // Check if AI response contains emergency indicators
           final aiLower = aiMessage.toLowerCase();
           if (aiLower.contains('emergency') || 
               aiLower.contains('call 911') ||
@@ -231,12 +209,11 @@ Please provide helpful guidance following your instructions.''';
           }
         }
 
-        // Calculate confidence based on response length and structure
         double confidence = 0.85;
         if (aiMessage.contains('📋') && aiMessage.contains('💊')) {
-          confidence = 0.90; // Well-structured response
+          confidence = 0.90;
         } else if (aiMessage.length < 200) {
-          confidence = 0.70; // Short response
+          confidence = 0.70;
         }
 
         return AIResponse(
@@ -247,16 +224,7 @@ Please provide helpful guidance following your instructions.''';
           timestamp: DateTime.now().toIso8601String(),
         );
       } else {
-        // Parse error message from API
-        String errorMsg = 'API error: ${response.statusCode}';
-        try {
-          final errorData = jsonDecode(response.body);
-          debugPrint('❌ API Error Body: ${response.body}');
-          if (errorData['error'] != null) {
-            errorMsg = errorData['error']['message'] ?? errorMsg;
-          }
-        } catch (_) {}
-        
+        final errorMsg = _parseApiErrorMessage(response);
         debugPrint('❌ API Error: $errorMsg');
         throw AIException(errorMsg, code: 'API_ERROR');
       }
@@ -312,66 +280,53 @@ The user has shared a medical image for analysis. $message
 
 Please analyze the visible details in the image and provide helpful health guidance following your instructions.''';
 
-      if (_apiKey.isEmpty) {
+      final apiKey = await ApiKeyService.getEffectiveApiKey();
+      final isCustom = await ApiKeyService.isUsingCustomKey();
+
+      if (apiKey.isEmpty) {
         throw const AIException(
-          'No API key configured. Please set GEMINI_API_KEY in the .env file.',
+          'No API key configured. Please set GEMINI_API_KEY in the .env file or add a custom key in Profile > Account Settings.',
           code: 'NO_API_KEY',
         );
       }
-      final url = Uri.parse(
-          '$_baseUrl/models/$_model:generateContent?key=$_apiKey');
 
-      debugPrint('🚀 Calling Gemini API with image...');
+      final payload = {
+        'contents': [
+          {
+            'parts': [
+              {'text': fullPrompt},
+              {
+                'inline_data': {
+                  'mime_type': mimeType,
+                  'data': imageBase64,
+                }
+              }
+            ]
+          }
+        ],
+        'systemInstruction': {
+          'parts': [
+            {'text': _systemInstruction}
+          ]
+        },
+        'generationConfig': {
+          'temperature': 0.7,
+          'topK': 40,
+          'topP': 0.95,
+          'maxOutputTokens': 2048,
+        },
+        'safetySettings': [
+          {'category': 'HARM_CATEGORY_HARASSMENT', 'threshold': 'BLOCK_ONLY_HIGH'},
+          {'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_ONLY_HIGH'},
+          {'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold': 'BLOCK_ONLY_HIGH'},
+          {'category': 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold': 'BLOCK_ONLY_HIGH'},
+        ],
+      };
+
+      debugPrint('🚀 Calling Gemini API with image (${isCustom ? "Custom User Key" : ".env System Key"})...');
       debugPrint('📝 Specialty: $specialty');
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': fullPrompt},
-                {
-                  'inline_data': {
-                    'mime_type': mimeType,
-                    'data': imageBase64,
-                  }
-                }
-              ]
-            }
-          ],
-          'systemInstruction': {
-            'parts': [
-              {'text': _systemInstruction}
-            ]
-          },
-          'generationConfig': {
-            'temperature': 0.7,
-            'topK': 40,
-            'topP': 0.95,
-            'maxOutputTokens': 2048,
-          },
-          'safetySettings': [
-            {
-              'category': 'HARM_CATEGORY_HARASSMENT',
-              'threshold': 'BLOCK_ONLY_HIGH'
-            },
-            {
-              'category': 'HARM_CATEGORY_HATE_SPEECH',
-              'threshold': 'BLOCK_ONLY_HIGH'
-            },
-            {
-              'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-              'threshold': 'BLOCK_ONLY_HIGH'
-            },
-            {
-              'category': 'HARM_CATEGORY_DANGEROUS_CONTENT',
-              'threshold': 'BLOCK_ONLY_HIGH'
-            },
-          ],
-        }),
-      ).timeout(Duration(seconds: _timeoutSeconds));
+      final response = await _postWithModelFallback(apiKey: apiKey, body: payload);
 
       debugPrint('📡 Image Response Status: ${response.statusCode}');
 
@@ -396,7 +351,6 @@ Please analyze the visible details in the image and provide helpful health guida
               '✅ Got image analysis: ${aiMessage.substring(0, aiMessage.length > 100 ? 100 : aiMessage.length)}...');
         }
 
-        // Emergency detection on AI response
         bool isEmergency = false;
         final aiLower = aiMessage.toLowerCase();
         if (aiLower.contains('emergency') ||
@@ -417,15 +371,8 @@ Please analyze the visible details in the image and provide helpful health guida
           timestamp: DateTime.now().toIso8601String(),
         );
       } else {
-        String errorMsg = 'API error: ${response.statusCode}';
-        try {
-          final errorData = jsonDecode(response.body);
-          debugPrint('❌ Image API Error: ${response.body}');
-          if (errorData['error'] != null) {
-            errorMsg = errorData['error']['message'] ?? errorMsg;
-          }
-        } catch (_) {}
-
+        final errorMsg = _parseApiErrorMessage(response);
+        debugPrint('❌ Image API Error: $errorMsg');
         throw AIException(errorMsg, code: 'API_ERROR');
       }
     } on SocketException {
@@ -445,6 +392,89 @@ Please analyze the visible details in the image and provide helpful health guida
         code: 'UNKNOWN_ERROR',
       );
     }
+  }
+
+  /// Sends a HTTP POST request trying candidate Gemini models sequentially in case of 404/400 model errors
+  static Future<http.Response> _postWithModelFallback({
+    required String apiKey,
+    required Map<String, dynamic> body,
+  }) async {
+    final candidateModels = [
+      _model,
+      'gemini-1.5-flash',
+      'gemini-3.6-flash',
+      'gemini-2.5-flash',
+    ];
+
+    http.Response? lastResponse;
+
+    for (final model in candidateModels) {
+      final url = Uri.parse('$_baseUrl/models/$model:generateContent?key=$apiKey');
+      
+      try {
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        ).timeout(Duration(seconds: _timeoutSeconds));
+
+        lastResponse = response;
+
+        if (response.statusCode == 200) {
+          return response;
+        }
+
+        debugPrint('⚠️ Model $model returned HTTP status ${response.statusCode}: ${response.body}');
+        
+        final lowerBody = response.body.toLowerCase();
+
+        // If auth/key invalid or quota error, do not keep trying other models with the same key
+        if (response.statusCode == 400 && response.body.contains('API_KEY')) {
+          return response;
+        }
+        if (response.statusCode == 403 || response.statusCode == 429) {
+          return response;
+        }
+
+        // If model not found, no longer available, deprecated or unsupported, try next candidate model
+        if (response.statusCode == 404 ||
+            lowerBody.contains('not found') ||
+            lowerBody.contains('no longer available') ||
+            lowerBody.contains('not supported') ||
+            lowerBody.contains('deprecated')) {
+          continue;
+        }
+
+        return response;
+      } catch (e) {
+        debugPrint('⚠️ Network error calling model $model: $e');
+      }
+    }
+
+    return lastResponse ??
+        http.Response('{"error":{"message":"Unable to connect to Gemini API."}}', 500);
+  }
+
+  /// Parses human-readable error messages from Gemini API response
+  static String _parseApiErrorMessage(http.Response response) {
+    try {
+      final errorData = jsonDecode(response.body);
+      if (errorData['error'] != null && errorData['error']['message'] != null) {
+        final rawMsg = errorData['error']['message'].toString();
+        if (rawMsg.contains('API_KEY_INVALID') || rawMsg.toLowerCase().contains('api key not valid')) {
+          return 'Invalid Gemini API key. Please check or update your key in Profile > Account Settings.';
+        }
+        if (response.statusCode == 429 || rawMsg.toLowerCase().contains('quota')) {
+          return 'Gemini API quota exceeded. Please try again later or add a custom API key in settings.';
+        }
+        return rawMsg;
+      }
+    } catch (_) {}
+
+    if (response.statusCode == 400 || response.statusCode == 403) {
+      return 'Invalid API key or unauthorized request (HTTP ${response.statusCode}). Check Account Settings.';
+    }
+    return 'Server error (HTTP ${response.statusCode}). Please check your API key.';
   }
 
   /// Check for emergency keywords in message
@@ -481,7 +511,7 @@ Please analyze the visible details in the image and provide helpful health guida
       return ServiceStatus(
         isOnline: isAvailable,
         version: '2.0.0',
-        model: 'Gemini 1.5 Flash',
+        model: _model,
         aiAvailable: isAvailable,
         timestamp: DateTime.now().toIso8601String(),
       );
@@ -489,7 +519,7 @@ Please analyze the visible details in the image and provide helpful health guida
       return ServiceStatus(
         isOnline: false,
         version: '2.0.0',
-        model: 'Gemini 1.5 Flash',
+        model: _model,
         aiAvailable: false,
         timestamp: DateTime.now().toIso8601String(),
       );

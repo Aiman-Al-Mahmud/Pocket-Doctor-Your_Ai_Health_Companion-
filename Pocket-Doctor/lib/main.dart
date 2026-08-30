@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/services/supabase_service.dart';
 import 'core/theme/app_theme.dart';
-import 'data/database/database_helper.dart';
 import 'features/auth/screens/splash_screen.dart';
 
 void main() async {
@@ -10,9 +10,9 @@ void main() async {
   
   // Load environment variables from .env
   await dotenv.load(fileName: '.env');
-  
-  // Initialize database
-  await DatabaseHelper.instance.database;
+
+  // Initialize Supabase Backend
+  await SupabaseService.initialize();
   
   runApp(const ProviderScope(child: PocketDoctorApp()));
 }

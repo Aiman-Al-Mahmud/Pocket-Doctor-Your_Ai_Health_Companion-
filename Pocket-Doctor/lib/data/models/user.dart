@@ -1,5 +1,5 @@
 class User {
-  final int? id;
+  final String? id;
   final String name;
   final String email;
   final int? age;
@@ -19,20 +19,20 @@ class User {
 
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
-      id: map['id'],
-      name: map['name'],
-      email: map['email'],
-      age: map['age'],
+      id: map['id']?.toString(),
+      name: map['full_name'] ?? map['name'] ?? '',
+      email: map['email'] ?? '',
+      age: map['age'] is int ? map['age'] : (map['age'] != null ? int.tryParse(map['age'].toString()) : null),
       phoneNumber: map['phone_number'],
-      passwordHash: map['password_hash'],
-      createdAt: DateTime.parse(map['created_at']),
+      passwordHash: map['password_hash'] ?? '',
+      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'].toString()) : DateTime.now(),
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
-      'name': name,
+      if (id != null) 'id': id,
+      'full_name': name,
       'email': email,
       'age': age,
       'phone_number': phoneNumber,
@@ -42,7 +42,7 @@ class User {
   }
 
   User copyWith({
-    int? id,
+    String? id,
     String? name,
     String? email,
     int? age,
@@ -61,6 +61,5 @@ class User {
     );
   }
 
-  // Getter for compatibility with UI components expecting fullName
   String get fullName => name;
 }

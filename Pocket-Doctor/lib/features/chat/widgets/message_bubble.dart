@@ -3,16 +3,23 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/message.dart';
+import '../../../data/models/doctor.dart';
+import '../../../data/database/database_helper.dart';
+import '../../../data/repositories/review_repository.dart';
 import '../../../core/utils/date_utils.dart' as utils;
 
 class MessageBubble extends StatefulWidget {
   final Message message;
   final bool showTime;
+  final String? medicalDivision;
+  final String? patientId;
 
   const MessageBubble({
     super.key,
     required this.message,
     this.showTime = false,
+    this.medicalDivision,
+    this.patientId,
   });
 
   @override
@@ -342,12 +349,274 @@ class _MessageBubbleState extends State<MessageBubble> {
                         fontSize: 15,
                       ),
                 )
-              : GestureDetector(
-                  onLongPress: () => _showMessageActions(context),
-                  child: _getOrBuildContentWidget(text),
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onLongPress: () => _showMessageActions(context),
+                      child: _getOrBuildContentWidget(text),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () => _showDoctorValidationDialog(context, text),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified_user_rounded, size: 16, color: AppColors.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Validate with Doctor',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
         ],
       ),
+    );
+  }
+
+  void _showDoctorValidationDialog(BuildContext context, String aiText) {
+    Doctor? selectedDoctor;
+    final division = widget.medicalDivision ?? 'General Practice';
+    final patientId = widget.patientId ?? 'demo-patient-session';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(24.0),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.8,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.verified_user_rounded, color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Select Doctor for Validation',
+                              style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                            Text(
+                              'Specialist Division: $division',
+                              style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Choose a licensed specialist to review this AI diagnosis:',
+                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: FutureBuilder<List<Doctor>>(
+                      future: DatabaseHelper.instance.getDoctors(specialty: division),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        final doctors = snapshot.data ?? [];
+                        if (doctors.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Text(
+                                'No specialists matching $division currently registered. An available physician will review your request.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          itemCount: doctors.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final doc = doctors[index];
+                            final isSelected = selectedDoctor?.id == doc.id;
+                            final initials = doc.name.replaceAll('Dr. ', '').trim();
+                            final avatarText = initials.isNotEmpty
+                                ? (initials.length >= 2 ? initials.substring(0, 2).toUpperCase() : initials[0].toUpperCase())
+                                : 'DR';
+
+                            return InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  selectedDoctor = doc;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected ? AppColors.primary : Colors.grey[300]!,
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                      child: Text(
+                                        avatarText,
+                                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(doc.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                          Text('${doc.specialization} • ${doc.yearsOfExperience} yrs exp', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                          Row(
+                                            children: [
+                                              Icon(Icons.star_rounded, size: 14, color: Colors.amber[700]),
+                                              const SizedBox(width: 4),
+                                              Text('${doc.rating}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                              const SizedBox(width: 10),
+                                              Text('\$${doc.consultationFee.toStringAsFixed(0)} fee', style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Radio<String>(
+                                      value: doc.id,
+                                      groupValue: selectedDoctor?.id,
+                                      onChanged: (val) {
+                                        setModalState(() {
+                                          selectedDoctor = doc;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            final req = await ReviewRepository().submitForDoctorValidation(
+                              patientId: patientId,
+                              chatId: widget.message.chatId,
+                              assignedDoctorId: selectedDoctor?.id,
+                              userQuery: 'Patient requested physician review for AI diagnosis.',
+                              aiResponseContent: aiText,
+                              medicalDivision: division,
+                            );
+
+                            if (!context.mounted) return;
+                            final isSuccess = req != null;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(isSuccess ? Icons.check_circle_rounded : Icons.info_outline_rounded, color: Colors.white, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(isSuccess
+                                          ? 'Submitted to ${selectedDoctor?.name ?? "Doctor Care"} for review!'
+                                          : 'Review request submitted for physician review!'),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: isSuccess ? AppColors.primary : Colors.orange,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            );
+                          },
+                          child: const Text('Submit Request'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

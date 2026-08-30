@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "environment": "Dart/Flutter",
+  "bundles": ["backend-bundle", "mobile-bundle"],
+  "architectural_rules": {
+    "pattern": "Clean Architecture & Repository Pattern",
+    "state_management": "Provider / ValueNotifier / StreamBuilder",
+    "data_layer": {
+      "supabase_client": "Centralized SupabaseService client instance",
+      "error_handling": "Catch PostgrestException & AuthException cleanly with user-friendly error mapping",
+      "type_safety": "Strongly-typed model mapping from PostgreSQL JSON to Dart class constructors",
+      "realtime_subscriptions": "Use Supabase Realtime Channels for live status sync between Patient & Doctor apps"
+    },
+    "routing_and_cross_app_sync": {
+      "patient_app": "Pocket Doctor (Patient side - request reviews, book appointments, AI chat)",
+      "doctor_app": "Doctor Care (Doctor side - accept/manage appointments, perform reviews, update presence)"
+    }
+  }
+}

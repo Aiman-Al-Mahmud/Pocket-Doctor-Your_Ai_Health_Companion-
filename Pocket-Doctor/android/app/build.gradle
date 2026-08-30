@@ -7,8 +7,8 @@ plugins {
 
 android {
     namespace = "com.example.pocket_doctor"
-    compileSdk = flutter.compileSdkVersion
-    // ndkVersion = flutter.ndkVersion  // Commented out - not needed for basic APK
+    compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

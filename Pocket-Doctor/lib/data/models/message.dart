@@ -1,6 +1,6 @@
 class Message {
-  final int? id;
-  final int chatId;
+  final String? id;
+  final String chatId;
   final String sender; // 'user' or 'ai'
   final String message;
   final DateTime createdAt;
@@ -15,27 +15,27 @@ class Message {
 
   factory Message.fromMap(Map<String, dynamic> map) {
     return Message(
-      id: map['id'],
-      chatId: map['chat_id'],
-      sender: map['sender'],
-      message: map['message'],
-      createdAt: DateTime.parse(map['created_at']),
+      id: map['id']?.toString(),
+      chatId: (map['chat_id'] ?? '').toString(),
+      sender: (map['sender_type'] ?? map['sender'] ?? 'user').toString(),
+      message: (map['content'] ?? map['message'] ?? '').toString(),
+      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'].toString()) : DateTime.now(),
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
+      if (id != null) 'id': id,
       'chat_id': chatId,
-      'sender': sender,
-      'message': message,
+      'sender_type': sender,
+      'content': message,
       'created_at': createdAt.toIso8601String(),
     };
   }
 
   Message copyWith({
-    int? id,
-    int? chatId,
+    String? id,
+    String? chatId,
     String? sender,
     String? message,
     DateTime? createdAt,
@@ -49,7 +49,6 @@ class Message {
     );
   }
 
-  // Helper methods
   bool get isFromUser => sender == 'user';
   bool get isFromAI => sender == 'ai';
 }

@@ -9,7 +9,7 @@ import '../widgets/profile_menu_section.dart';
 import '../../auth/screens/login_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
-  final int userId;
+  final String userId;
 
   const ProfileScreen({
     super.key,
@@ -94,13 +94,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return AppBar(
       backgroundColor: AppColors.backgroundLight,
       elevation: 0,
-      leading: IconButton(
-        onPressed: () => Navigator.of(context).pop(),
-        icon: const Icon(
-          Icons.arrow_back_ios,
-          color: AppColors.textPrimaryLight,
-        ),
-      ),
+      automaticallyImplyLeading: false,
       title: Text(
         'Profile',
         style: Theme.of(context).textTheme.titleLarge?.copyWith(

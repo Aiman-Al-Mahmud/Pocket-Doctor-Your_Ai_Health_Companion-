@@ -114,35 +114,39 @@ class _SplashScreenState extends State<SplashScreen>
                           height: 220,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 5),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 30,
-                                offset: const Offset(0, 15),
+                                color: Colors.black.withOpacity(0.12),
+                                blurRadius: 25,
+                                offset: const Offset(0, 10),
                               ),
                             ],
                           ),
                           child: ClipOval(
-                            child: Image.asset(
-                              'assets/images/robotdoc.png',
-                              width: 220,
-                              height: 220,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 220,
-                                  height: 220,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white24,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.medical_services_rounded,
-                                    size: 100,
-                                    color: Colors.white,
-                                  ),
-                                );
-                              },
+                            child: Transform.scale(
+                              scale: 1.13,
+                              child: Image.asset(
+                                'assets/icons/robotdoc.png',
+                                width: 220,
+                                height: 220,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 220,
+                                    height: 220,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white24,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.medical_services_rounded,
+                                      size: 100,
+                                      color: Colors.white,
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ),

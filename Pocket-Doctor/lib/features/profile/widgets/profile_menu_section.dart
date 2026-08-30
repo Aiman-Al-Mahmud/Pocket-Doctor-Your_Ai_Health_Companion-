@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
+import '../../settings/screens/api_key_settings_screen.dart';
+
 class ProfileMenuSection extends StatelessWidget {
   final VoidCallback onLogout;
   final VoidCallback onDeleteAccount;
@@ -35,6 +37,14 @@ class ProfileMenuSection extends StatelessWidget {
         _buildMenuCard(
           context,
           items: [
+            _MenuItemData(
+              icon: Icons.key_outlined,
+              title: 'Gemini API Key',
+              subtitle: 'Add or manage custom API key',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ApiKeySettingsScreen()),
+              ),
+            ),
             _MenuItemData(
               icon: Icons.lock_outline,
               title: 'Change Password',
@@ -141,29 +151,33 @@ class ProfileMenuSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        children: items.asMap().entries.map((entry) {
-          final index = entry.key;
-          final item = entry.value;
-          final isLast = index == items.length - 1;
-          
-          return Column(
-            children: [
-              _buildMenuItem(context, item),
-              if (!isLast)
-                Divider(
-                  height: 1,
-                  color: Colors.grey.withOpacity(0.2),
-                ),
-            ],
-          );
-        }).toList(),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          children: items.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final isLast = index == items.length - 1;
+            
+            return Column(
+              children: [
+                _buildMenuItem(context, item),
+                if (!isLast)
+                  Divider(
+                    height: 1,
+                    color: Colors.grey.withValues(alpha: 0.2),
+                  ),
+              ],
+            );
+          }).toList(),
+        ),
       ),
     );
   }

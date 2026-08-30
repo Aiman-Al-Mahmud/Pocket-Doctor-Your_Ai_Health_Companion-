@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/database/database_helper.dart';
-import '../../home/screens/home_screen.dart';
+import '../../home/screens/main_navigation_shell.dart';
 import 'registration_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -82,12 +82,12 @@ class _LoginScreenState extends State<LoginScreen>
           await DatabaseHelper.instance.authenticateUser(email, password);
 
       if (user != null) {
-        // Login successful - navigate to home screen
+        // Login successful - navigate to MainNavigationShell
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
-                  HomeScreen(userId: user.id!),
+                  MainNavigationShell(userId: user.id!),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
                 return FadeTransition(opacity: animation, child: child);

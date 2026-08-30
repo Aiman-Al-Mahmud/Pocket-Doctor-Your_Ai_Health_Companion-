@@ -8,7 +8,7 @@ import '../../../data/database/database_helper.dart';
 import 'chat_screen.dart';
 
 class ChatHistoryScreen extends ConsumerStatefulWidget {
-  final int userId;
+  final String userId;
 
   const ChatHistoryScreen({
     super.key,
@@ -22,7 +22,7 @@ class ChatHistoryScreen extends ConsumerStatefulWidget {
 class _ChatHistoryScreenState extends ConsumerState<ChatHistoryScreen>
     with TickerProviderStateMixin {
   List<Chat> _allChats = [];
-  Map<int, Message?> _lastMessages = {};
+  Map<String, Message?> _lastMessages = {};
   bool _isLoading = true;
   late AnimationController _animationController;
   late AnimationController _loadingController;
@@ -224,7 +224,7 @@ class _ChatHistoryScreenState extends ConsumerState<ChatHistoryScreen>
               turns: _loadingController,
               child: ClipOval(
                 child: Image.asset(
-                  'assets/images/robotdoc.png',
+                  'assets/icons/robotdoc.png',
                   width: 84,
                   height: 84,
                   fit: BoxFit.cover,
@@ -278,7 +278,7 @@ class _ChatHistoryScreenState extends ConsumerState<ChatHistoryScreen>
               turns: _loadingController,
               child: ClipOval(
                 child: Image.asset(
-                  'assets/images/robotdoc.png',
+                  'assets/icons/robotdoc.png',
                   width: 64,
                   height: 64,
                   fit: BoxFit.cover,

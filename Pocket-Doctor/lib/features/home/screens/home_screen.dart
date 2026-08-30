@@ -9,11 +9,11 @@ import '../../chat/screens/chat_history_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
-  final int userId;
+  final String userId;
 
   const HomeScreen({
     super.key,
-    required this.userId,
+    this.userId = 'demo-patient-id',
   });
 
   @override

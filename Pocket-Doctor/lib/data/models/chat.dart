@@ -1,6 +1,6 @@
 class Chat {
-  final int? id;
-  final int userId;
+  final String? id;
+  final String userId;
   final String specialty;
   final String? title;
   final DateTime createdAt;
@@ -15,27 +15,27 @@ class Chat {
 
   factory Chat.fromMap(Map<String, dynamic> map) {
     return Chat(
-      id: map['id'],
-      userId: map['user_id'],
-      specialty: map['specialty'],
-      title: map['title'],
-      createdAt: DateTime.parse(map['created_at']),
+      id: map['id']?.toString(),
+      userId: (map['patient_id'] ?? map['user_id'] ?? '').toString(),
+      specialty: map['medical_division'] ?? map['specialty'] ?? 'General',
+      title: map['title'] ?? 'Health Consultation',
+      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'].toString()) : DateTime.now(),
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
-      'user_id': userId,
-      'specialty': specialty,
-      'title': title,
+      if (id != null) 'id': id,
+      'patient_id': userId,
+      'medical_division': specialty,
+      'title': title ?? '$specialty Consultation',
       'created_at': createdAt.toIso8601String(),
     };
   }
 
   Chat copyWith({
-    int? id,
-    int? userId,
+    String? id,
+    String? userId,
     String? specialty,
     String? title,
     DateTime? createdAt,

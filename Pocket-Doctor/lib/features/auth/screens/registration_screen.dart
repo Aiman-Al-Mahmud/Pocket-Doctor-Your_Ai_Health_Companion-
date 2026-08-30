@@ -83,25 +83,32 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen>
     });
 
     try {
+      final cleanEmail = _emailController.text.trim().toLowerCase();
+      final rawPassword = _passwordController.text;
+
       // Check if email already exists
       final existingUser =
-          await DatabaseHelper.instance.getUserByEmail(_emailController.text);
+          await DatabaseHelper.instance.getUserByEmail(cleanEmail);
       if (existingUser != null) {
         _showError(
             'Email already registered. Please use a different email or try logging in.');
         return;
       }
 
-      // Create new user
+      // Create new user model
       final user = User(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim().toLowerCase(),
+        email: cleanEmail,
         age: int.tryParse(_ageController.text),
-        passwordHash: SecurityUtils.hashPassword(_passwordController.text),
+        passwordHash: SecurityUtils.hashPassword(rawPassword),
         createdAt: DateTime.now(),
       );
 
-      await DatabaseHelper.instance.insertUser(user);
+      // Register patient with Supabase Auth & PostgreSQL sync
+      await DatabaseHelper.instance.registerPatient(
+        user: user,
+        password: rawPassword,
+      );
 
       if (mounted) {
         _showSuccessDialog();

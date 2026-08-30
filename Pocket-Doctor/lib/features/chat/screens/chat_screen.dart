@@ -229,8 +229,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       await _addAIMessage(fallbackResponse.message, isEmergency: false);
 
       if (mounted) {
-        String snackBarMessage = 'Connection issue. Showing general guidance.';
-        IconData snackIcon = Icons.wifi_off;
+        String snackBarMessage = e.message;
+        IconData snackIcon = Icons.error_outline;
         
         if (e.code == 'NO_INTERNET') {
           snackBarMessage = 'No internet connection. Please check WiFi/data.';
@@ -238,8 +238,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         } else if (e.code == 'TIMEOUT') {
           snackBarMessage = 'Request timed out. Slow connection detected.';
           snackIcon = Icons.timer_off;
+        } else if (e.code == 'NO_API_KEY') {
+          snackBarMessage = 'No API key configured. Tap Profile > Account Settings to add your key.';
+          snackIcon = Icons.key_off;
         } else if (e.code == 'API_ERROR') {
-          snackBarMessage = 'Server error. Please try again later.';
           snackIcon = Icons.cloud_off;
         }
         
@@ -256,7 +258,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(16),
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -587,9 +589,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             children: [
               RepaintBoundary(
                 child: MessageBubble(
-                  key: ValueKey<int>(message.id ?? message.createdAt.microsecondsSinceEpoch),
+                  key: ValueKey<String>(message.id ?? message.createdAt.microsecondsSinceEpoch.toString()),
                   message: message,
                   showTime: showTime,
+                  medicalDivision: widget.chat.specialty,
+                  patientId: widget.chat.userId,
                 ),
               ),
               if (message.isFromAI && isLast && !_isTyping && _isEmergency) ...[
